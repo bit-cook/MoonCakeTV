@@ -3,12 +3,12 @@ import { useEffect, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 
-import { Dazahui } from "@/schemas/dazahui";
+import { getVodUniqueId, VodObject } from "@/schemas/vod";
 
 import { MediaCard } from "../common/media-card";
 import { setSourceNameCache } from "../common/utils";
 
-// Helper to convert CaiJi NormalizedVod to Dazahui format
+// Helper to convert CaiJi NormalizedVod to VodObject format
 interface NormalizedVod {
   id: string;
   sourceKey: string;
@@ -32,13 +32,11 @@ interface NormalizedVod {
   typeName: string;
 }
 
-function vodToDazahui(vod: NormalizedVod): Dazahui {
+function normalizedVodToVodObject(vod: NormalizedVod): VodObject {
   const firstSource = Object.keys(vod.episodes)[0];
   const m3u8_urls = firstSource ? vod.episodes[firstSource] : {};
 
   return {
-    id: 0,
-    mc_id: vod.id,
     title: vod.title,
     m3u8_urls,
     language: vod.language || "",
@@ -50,9 +48,6 @@ function vodToDazahui(vod: NormalizedVod): Dazahui {
     category: vod.categories?.[0] || null,
     source_vod_id: String(vod.sourceVodId),
     source: vod.sourceKey,
-    douban_id: vod.doubanId ? String(vod.doubanId) : "",
-    imdb_id: "",
-    tmdb_id: "",
   };
 }
 
@@ -64,10 +59,10 @@ interface SourceInfo {
 export const RandomMedia = ({
   handleCardClick,
 }: {
-  handleCardClick: (dazahui: Dazahui) => void;
+  handleCardClick: (vod: VodObject) => void;
 }) => {
   const [loading, setLoading] = useState(true);
-  const [random, setRandom] = useState<Dazahui[] | null>(null);
+  const [random, setRandom] = useState<VodObject[] | null>(null);
   const [sources, setSources] = useState<SourceInfo[]>([]);
 
   // Fetch sources on mount
@@ -91,8 +86,8 @@ export const RandomMedia = ({
     fetch("/api/caiji/recent?limit=20")
       .then((res) => res.json())
       .then((json) => {
-        // Convert NormalizedVod array to Dazahui array
-        const items = (json.data?.items || []).map(vodToDazahui);
+        // Convert NormalizedVod array to VodObject array
+        const items = (json.data?.items || []).map(normalizedVodToVodObject);
         setRandom(items);
       })
       .catch((err) => {
@@ -150,8 +145,8 @@ export const RandomMedia = ({
           <div className='grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4'>
             {random?.map((item, index) => (
               <MediaCard
-                key={item.mc_id || index}
-                dazahui={item}
+                key={getVodUniqueId(item) || index}
+                vodObject={item}
                 onClick={() => handleCardClick(item)}
                 showSpeedTest
                 userId='me'

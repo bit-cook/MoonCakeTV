@@ -9,7 +9,7 @@ import { RandomMedia } from "@/components/home/random-media";
 
 import { useGlobalStore } from "@/stores/global";
 
-import { Dazahui } from "@/schemas/dazahui";
+import { VodObject } from "@/schemas/vod";
 
 export default function HomePage() {
   const router = useRouter();
@@ -27,8 +27,8 @@ export default function HomePage() {
     setHasSeenDisclaimer(true);
   };
 
-  const handleCardClick = (dazahui: Dazahui) => {
-    router.push(`/play?mc_id=${dazahui.mc_id}`);
+  const handleCardClick = (vod: VodObject) => {
+    router.push(`/play?vod_id=${vod.source_vod_id}&vod_src=${vod.source}`);
   };
 
   return (

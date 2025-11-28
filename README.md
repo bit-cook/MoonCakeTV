@@ -19,7 +19,7 @@
 ## 🚀 一键部署
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/MoonCakeTV/MoonCakeTV/main/deploy.sh | bash
+bash <(curl -fsSL https://raw.githubusercontent.com/MoonCakeTV/MoonCakeTV/main/deploy.sh)
 ```
 
 脚本会自动：
@@ -30,6 +30,77 @@ curl -fsSL https://raw.githubusercontent.com/MoonCakeTV/MoonCakeTV/main/deploy.s
 - 启动服务
 
 **支持系统**：Debian, Ubuntu, Rocky Linux, AlmaLinux, Oracle Linux, Arch Linux
+
+---
+
+## 🏠 在 NAS 或内网环境部署（无 HTTPS）
+
+### 方式一：Docker Run（最简单）
+
+```bash
+docker run -d \
+  --name mooncaketv \
+  -p 3333:3333 \
+  -e JWT_SECRET=修改此处换成随机字符串 \
+  -e NODE_ENV=production \
+  -e ALLOW_HTTP_COOKIES=1 \
+  -v /your/data/path:/app/data \
+  --restart unless-stopped \
+  ghcr.io/mooncaketv/mooncaketv:latest
+```
+
+**Synology NAS 示例：**
+
+```bash
+docker run -d \
+  --name mooncaketv \
+  -p 3333:3333 \
+  -e JWT_SECRET=$(openssl rand -hex 32) \
+  -e NODE_ENV=production \
+  -e ALLOW_HTTP_COOKIES=1 \
+  -v /volume1/docker/mooncaketv/data:/app/data \
+  --restart unless-stopped \
+  ghcr.io/mooncaketv/mooncaketv:latest
+```
+
+**飞牛NAS (fnOS) 示例：**
+
+```bash
+docker run -d \
+  --name mooncaketv \
+  -p 3333:3333 \
+  -e JWT_SECRET=$(openssl rand -hex 32) \
+  -e NODE_ENV=production \
+  -e ALLOW_HTTP_COOKIES=1 \
+  -v /vol1/1000/docker/mooncaketv/data:/app/data \
+  --restart unless-stopped \
+  ghcr.io/mooncaketv/mooncaketv:latest
+```
+
+### 方式二：Docker Compose
+
+```yaml
+services:
+  mooncaketv:
+    image: ghcr.io/mooncaketv/mooncaketv:latest
+    container_name: mooncaketv
+    ports:
+      - "XXXX:3333"
+    environment:
+      - JWT_SECRET=修改此处，换成一个随机字符串
+      - NODE_ENV=production
+      - ALLOW_HTTP_COOKIES=1
+    volumes:
+      - ./data:/app/data
+    restart: unless-stopped
+```
+
+### 说明
+
+- **`ALLOW_HTTP_COOKIES=1`**：允许在 HTTP 下使用 cookies（登录功能必需）
+- **`-v /your/data/path:/app/data`**：数据持久化目录，存储收藏、历史、设置
+- **端口**：容器内部端口是 `3333`，可映射到任意外部端口，XXXX替换为任意端口，比如6666
+- 访问地址：`http://你的IP地址:3333`
 
 ---
 

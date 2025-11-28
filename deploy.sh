@@ -2,6 +2,29 @@
 
 set -e
 
+# Check if script is being piped without terminal access
+# If so, show instructions for proper execution
+if [ ! -t 0 ] && [ ! -t 1 ]; then
+    echo "错误: 此脚本需要交互式终端"
+    echo ""
+    echo "请使用以下命令运行:"
+    echo "  bash <(curl -fsSL https://raw.githubusercontent.com/MoonCakeTV/MoonCakeTV/main/deploy.sh)"
+    echo ""
+    echo "或者下载后运行:"
+    echo "  curl -fsSL https://raw.githubusercontent.com/MoonCakeTV/MoonCakeTV/main/deploy.sh -o deploy.sh"
+    echo "  bash deploy.sh"
+    exit 1
+fi
+
+# Ensure we can read from terminal even when piped
+if [ ! -t 0 ]; then
+    exec < /dev/tty || {
+        echo "错误: 无法访问终端"
+        echo "请使用: bash <(curl -fsSL URL)"
+        exit 1
+    }
+fi
+
 echo ""
 echo "  __  __                    ____      _        _______     __"
 echo " |  \/  | ___   ___  _ __  / ___|__ _| | _____|_   _\ \   / /"
@@ -36,40 +59,57 @@ fi
 echo "Docker 已就绪: $(docker --version)"
 echo ""
 
-# Check if .env exists
+# Load existing .env values if file exists
+existing_jwt_secret=""
+existing_domain=""
+
 if [ -f .env ]; then
-    echo "检测到已有 .env 文件"
-    read -p "是否重新配置？(y/N): " reconfigure
-    if [ "$reconfigure" != "y" ] && [ "$reconfigure" != "Y" ]; then
-        echo "使用现有配置启动..."
-        docker compose up -d
-        echo ""
-        echo "部署完成！"
-        exit 0
+    echo "检测到已有 .env 文件，正在读取现有配置..."
+    # Source the existing .env to get values
+    existing_jwt_secret=$(grep -E "^JWT_SECRET=" .env 2>/dev/null | cut -d'=' -f2- || echo "")
+    existing_domain=$(grep -E "^DOMAIN=" .env 2>/dev/null | cut -d'=' -f2- || echo "")
+    echo ""
+fi
+
+# JWT_SECRET
+echo "请输入 JWT_SECRET (用于加密认证令牌)"
+if [ -n "$existing_jwt_secret" ]; then
+    # Show masked version of existing secret
+    masked_secret="${existing_jwt_secret:0:8}...${existing_jwt_secret: -4}"
+    echo "当前值: $masked_secret"
+    echo "直接回车保留现有值，或输入新值"
+fi
+echo "留空将自动生成随机密钥"
+read -p "JWT_SECRET: " jwt_secret
+
+if [ -z "$jwt_secret" ]; then
+    if [ -n "$existing_jwt_secret" ]; then
+        jwt_secret="$existing_jwt_secret"
+        echo "保留现有 JWT_SECRET"
+    else
+        jwt_secret=$(openssl rand -hex 32)
+        echo "已自动生成 JWT_SECRET"
     fi
 fi
 
 echo ""
 
-# JWT_SECRET
-echo "请输入 JWT_SECRET (用于加密认证令牌)"
-echo "留空将自动生成随机密钥"
-read -p "JWT_SECRET: " jwt_secret
-
-if [ -z "$jwt_secret" ]; then
-    jwt_secret=$(openssl rand -hex 32)
-    echo "已自动生成 JWT_SECRET"
-fi
-
-echo ""
-
 # Domain
-echo "请输入域名 (例如: mooncake.example.com)"
+echo "请输入域名，否则无法登录 (例如: mooncake.example.com，最好使用二级域名)"
+if [ -n "$existing_domain" ]; then
+    echo "当前值: $existing_domain"
+    echo "直接回车保留现有值，或输入新值"
+fi
 read -p "域名: " domain
 
 if [ -z "$domain" ]; then
-    echo "错误: 域名不能为空"
-    exit 1
+    if [ -n "$existing_domain" ]; then
+        domain="$existing_domain"
+        echo "保留现有域名: $domain"
+    else
+        echo "错误: 域名不能为空"
+        exit 1
+    fi
 fi
 
 echo ""
